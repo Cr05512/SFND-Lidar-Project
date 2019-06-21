@@ -75,6 +75,32 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
     }
 }
 
+void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer){
+    ProcessPointClouds<pcl::PointXYZI>* pointProcessorI = new ProcessPointClouds<pcl::PointXYZI>();
+    pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = pointProcessorI->loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
+    pcl::PointCloud<pcl::PointXYZI>::Ptr cloudFiltered = pointProcessorI->FilterCloud(inputCloud,0.2,Eigen::Vector4f (-9, -6, -3, 1), Eigen::Vector4f ( 30, 6, 2, 1));
+
+    std::pair<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZI>>,boost::shared_ptr<pcl::PointCloud<pcl::PointXYZI>>> segmentedCloud = pointProcessorI->SegmentPlane(cloudFiltered,200,0.2);
+
+    Color* road_color = new Color(0.0,1.0,0.0);
+    renderPointCloud(viewer,segmentedCloud.first,"inputCloud",*road_color);
+
+    std::vector<Color> obstacle_colors;
+
+    int clusterId = 0;
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloudClusters = pointProcessorI->customClustering(segmentedCloud.second, 0.5, 20, 500);
+    Box box;
+    for(pcl::PointCloud<pcl::PointXYZI>::Ptr cluster : cloudClusters){
+        obstacle_colors.push_back(Color(((double) rand() / (RAND_MAX)),((double) rand() / (RAND_MAX)),((double) rand() / (RAND_MAX))));
+        std::cout << "cluster size ";
+        pointProcessorI->numPoints(cluster);
+        renderPointCloud(viewer,cluster,"obstCloud"+std::to_string(clusterId),obstacle_colors[clusterId]);
+        box = pointProcessorI->BoundingBox(cluster);
+        renderBox(viewer,box,clusterId);
+        ++clusterId;
+    }
+}
+
 
 //setAngle: SWITCH CAMERA ANGLE {XY, TopDown, Side, FPS}
 void initCamera(CameraAngle setAngle, pcl::visualization::PCLVisualizer::Ptr& viewer)
@@ -107,7 +133,8 @@ int main (int argc, char** argv)
     pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
     CameraAngle setAngle = XY;
     initCamera(setAngle, viewer);
-    simpleHighway(viewer);
+    //simpleHighway(viewer);
+    cityBlock(viewer);
 
     while (!viewer->wasStopped ())
     {

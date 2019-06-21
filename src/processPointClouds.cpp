@@ -27,12 +27,46 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(ty
     auto startTime = std::chrono::steady_clock::now();
 
     // TODO:: Fill in the function to do voxel grid point reduction and region based filtering
+    pcl::VoxelGrid<PointT> sor;
+    typename pcl::PointCloud<PointT>::Ptr cloudFiltered(new pcl::PointCloud<PointT>);
+    typename pcl::PointCloud<PointT>::Ptr cloudRegion(new pcl::PointCloud<PointT>);
+
+    sor.setInputCloud(cloud);
+    sor.setLeafSize(filterRes, filterRes, filterRes);
+    sor.filter(*cloudFiltered);
+
+    pcl::CropBox<PointT> region(true);
+    region.setMin(minPoint);
+    region.setMax(maxPoint);
+    region.setInputCloud(cloudFiltered);
+    region.filter(*cloudRegion);
+
+    std::cout<<cloudRegion->size()<<std::endl;
+
+    std::vector<int> indexes;
+
+    pcl::CropBox<PointT> carRoof(true);
+    carRoof.setMin(Eigen::Vector4f(-1.5, -1.7, -1, 1));
+    carRoof.setMax(Eigen::Vector4f(2.6, 1.7, -0.4, 1));
+    carRoof.setInputCloud(cloudRegion);
+    carRoof.filter(indexes);
+
+    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
+    for(int i=0; i<indexes.size(); i++){
+        inliers->indices.push_back(indexes[i]);
+    }
+
+    pcl::ExtractIndices<PointT> extract;
+    extract.setInputCloud(cloudRegion);
+    extract.setIndices(inliers);
+    extract.setNegative(true);
+    extract.filter(*cloudRegion);
 
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "filtering took " << elapsedTime.count() << " milliseconds" << std::endl;
 
-    return cloud;
+    return cloudRegion;
 
 }
 
@@ -46,7 +80,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     for (int index : inliers->indices){
         road_cloud->points.push_back(cloud->points[index]);
     }
-    pcl::ExtractIndices<pcl::PointXYZ> extract;
+    pcl::ExtractIndices<PointT> extract;
     extract.setInputCloud(cloud);
     extract.setIndices(inliers);
     extract.setNegative(true);
@@ -183,8 +217,7 @@ std::vector<boost::filesystem::path> ProcessPointClouds<PointT>::streamPcd(std::
 
 template<typename PointT>
 std::vector<float> ProcessPointClouds<PointT>::crossProd(std::vector<float> const& v1, std::vector<float> const& v2){
-    std::vector<float> result (v1.size());
-    result = {v1[1]*v2[2] - v1[2]*v2[1],
+    std::vector<float> result = {v1[1]*v2[2] - v1[2]*v2[1],
             v1[2]*v2[0] - v1[0]*v2[2],
             v1[0]*v2[1] - v1[1]*v2[0]};
     return result;
@@ -192,67 +225,56 @@ std::vector<float> ProcessPointClouds<PointT>::crossProd(std::vector<float> cons
 
 template<typename PointT>
 std::vector<int> ProcessPointClouds<PointT>::RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol){
-    auto startTime = std::chrono::steady_clock::now();
+   
     srand(time(NULL));
     pcl::PointIndices* bestSet(new pcl::PointIndices ());
     pcl::PointIndices* tempSet(new pcl::PointIndices ());
     // TODO: Fill in this function
-    pcl::PointXYZ *point1(new pcl::PointXYZ());
-    pcl::PointXYZ *point2(new pcl::PointXYZ());
-    pcl::PointXYZ *point3(new pcl::PointXYZ());
+    typename pcl::PointCloud<PointT>::Ptr samples(new pcl::PointCloud<PointT>);
 
     float coefficients[4] = {0.0,0.0,0.0,0.0};
 
-    std::vector<float> v1 {0.0, 0.0, 0.0};
-    std::vector<float> v2 {0.0, 0.0, 0.0};
-    std::vector<float> v3 {0.0, 0.0, 0.0};
+    std::vector<float> v1, v2, v3;
 
     int cloudSize = cloud->points.size();
     // For max iterations
+    float distance = 0;
     for (int i=0; i<maxIterations; i++){
     // Randomly sample subset and fit line
-        *point1 = cloud->points[rand()%cloudSize];
-        //do{
-        *point2 = cloud->points[rand()%cloudSize];
-        *point3 = cloud->points[rand()%cloudSize];
-        //}
-        //while(point2->x == point1->x && point2->y == point1->y);
-        v1 = {point2->x - point1->x, point2->y - point1->y, point2->z - point1->z};
-        v2 = {point3->x - point1->x, point3->y - point1->y, point3->z - point1->z};
-        //std::cout << "X1: " << point1.x << "\t Y1: " << point1.y << std::endl;
-    
+        samples->points.push_back(cloud->points[rand()%cloudSize]);
+        samples->points.push_back(cloud->points[rand()%cloudSize]);
+        samples->points.push_back(cloud->points[rand()%cloudSize]);
+        
+
+        v1 = {samples->points[1].x - samples->points[0].x, samples->points[1].y - samples->points[0].y, samples->points[1].z - samples->points[0].z};
+        v2 = {samples->points[2].x - samples->points[0].x, samples->points[2].y - samples->points[0].y, samples->points[2].z - samples->points[0].z};
         v3 = crossProd(v1,v2);
+
         coefficients[0] = v3[0];
         coefficients[1] = v3[1];
         coefficients[2] = v3[2];
-        coefficients[3] = -(v3[0]*v1[0] + v3[1]*v1[1] + v3[2]*v1[2]);
+        coefficients[3] = -(v3[0]*samples->points[0].x + v3[1]*samples->points[0].y + v3[2]*samples->points[0].z);
+        
         //std::cout << "X: " << v3[0] << "\t Y: " << v3[1] << "\t Z: " << v3[2] << std::endl;
-
-        // Measure distance between every point and fitted line
+        // Measure distance between every point and fitted plane
         for(int j = 0; j<cloudSize; j++){
-            if(abs(coefficients[0]*cloud->points[j].x + coefficients[1]*cloud->points[j].y +
-            coefficients[2]*cloud->points[j].z + coefficients[3])/sqrt(pow(coefficients[0],2)+pow(coefficients[1],2) + pow(coefficients[2],2))<distanceTol){
+            distance = abs(coefficients[0]*cloud->points[j].x + coefficients[1]*cloud->points[j].y + coefficients[2]*cloud->points[j].z + coefficients[3])/sqrt(pow(coefficients[0],2)+pow(coefficients[1],2) + pow(coefficients[2],2));
+            if(distance <= distanceTol){
                 tempSet->indices.push_back(j);
             }
         }
     // If distance is smaller than threshold count it as inlier
         if(tempSet->indices.size()>bestSet->indices.size()){
             bestSet->indices = tempSet->indices;
-            //std::cout << "BestSet Dim: " << bestSet->indices.size() << std::endl;
         }
         tempSet->indices.clear();
+        samples->clear();
 
     }
-
     // Return indicies of inliers from fitted line with most inliers
     std::vector<int> inliersResult(bestSet->indices.begin(),bestSet->indices.end());
     //std::cout << "Inliers Dim : " << inliersResult.size() << std::endl;
-    auto endTime = std::chrono::steady_clock::now();
-    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-    std::cout << "ransac took " << elapsedTime.count() << " milliseconds" << std::endl;
-    delete point1;
-    delete point2;
-    delete point3;
+    
     delete bestSet;
     delete tempSet;
     
@@ -274,6 +296,8 @@ void ProcessPointClouds<PointT>::proximity(typename pcl::PointCloud<PointT>::Ptr
 
 template<typename PointT>
 std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::customClustering(typename pcl::PointCloud<PointT>::Ptr cloud, float distanceTol, uint minSize, uint maxSize){
+    auto startTime = std::chrono::steady_clock::now();
+    
     KdTree* tree = new KdTree;
     
     for (int i=0; i<cloud->points.size(); i++){
@@ -292,6 +316,10 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::c
             }
 		}
 	}
+
+    auto endTime = std::chrono::steady_clock::now();
+    auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " << clusters.size() << " clusters" << std::endl;
 
     return clusters;
 
