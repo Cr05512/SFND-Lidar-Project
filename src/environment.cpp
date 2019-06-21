@@ -51,12 +51,28 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = lidar->scan();
     //renderRays(viewer,lidar->position,cloud);
     Color* road_color = new Color(0.0,1.0,0.0);
-    Color* obstacle_color = new Color(1.0,0.0,0.0);
+    //Color* obstacle_color = new Color(1.0,0.0,0.0);
       // TODO:: Create point processor
-    ProcessPointClouds<pcl::PointXYZ> pointProcessor;// = new ProcessPointClouds<pcl::PointXYZ>();
-    std::pair<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ>>,boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ>>> segmentedPlane = pointProcessor.SegmentPlane(cloud,100,0.2);
-    renderPointCloud(viewer,segmentedPlane.first,"road",*road_color);
-    renderPointCloud(viewer,segmentedPlane.second,"obstacles",*obstacle_color);
+    ProcessPointClouds<pcl::PointXYZ>* pointProcessor = new ProcessPointClouds<pcl::PointXYZ>();
+    std::pair<boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ>>,boost::shared_ptr<pcl::PointCloud<pcl::PointXYZ>>> segmentedCloud = pointProcessor->SegmentPlane(cloud,100,0.2);
+    renderPointCloud(viewer,segmentedCloud.first,"road",*road_color);
+    //renderPointCloud(viewer,segmentedPlane.second,"obstacles",*obstacle_color);
+    std::vector<Color> obstacle_colors;
+
+    int clusterId = 0;
+    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudClusters = pointProcessor->customClustering(segmentedCloud.second, 1.0, 3, 30);
+    //std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> cloudClusters = pointProcessor->Clustering(segmentedCloud.second, 1.0, 3, 30);
+
+    Box box;
+    for(pcl::PointCloud<pcl::PointXYZ>::Ptr cluster : cloudClusters){
+        obstacle_colors.push_back(Color(((double) rand() / (RAND_MAX)),((double) rand() / (RAND_MAX)),((double) rand() / (RAND_MAX))));
+        std::cout << "cluster size ";
+        pointProcessor->numPoints(cluster);
+        renderPointCloud(viewer,cluster,"obstCloud"+std::to_string(clusterId),obstacle_colors[clusterId]);
+        box = pointProcessor->BoundingBox(cluster);
+        renderBox(viewer,box,clusterId);
+        ++clusterId;
+    }
 }
 
 

@@ -6,6 +6,22 @@
 
 #IncludeRegexTransform: 
 
+/home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/./render/box.h
+Eigen/Geometry
+-
+
+/home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/./render/render.h
+pcl/visualization/pcl_visualizer.h
+-
+box.h
+/home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/./render/box.h
+iostream
+-
+vector
+-
+string
+-
+
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/environment.cpp
 sensors/lidar.h
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/sensors/lidar.h
@@ -15,6 +31,10 @@ processPointClouds.h
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/processPointClouds.h
 processPointClouds.cpp
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/processPointClouds.cpp
+
+/home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/kdtree3D.h
+./render/render.h
+/home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/./render/render.h
 
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/processPointClouds.cpp
 processPointClouds.h
@@ -51,6 +71,8 @@ chrono
 -
 render/box.h
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/render/box.h
+kdtree3D.h
+/home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/kdtree3D.h
 
 /home/cr055/Desktop/Udacity-SFND/SFND_Lidar_Obstacle_Detection/src/render/box.h
 Eigen/Geometry
