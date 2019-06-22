@@ -49,7 +49,7 @@ public:
 
     std::vector<float> crossProd(std::vector<float> const& v1, std::vector<float> const& v2);
 
-    std::vector<int> RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol);
+    pcl::PointIndices::Ptr RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol);
 
     void proximity(typename pcl::PointCloud<PointT>::Ptr cloud, uint index, typename pcl::PointCloud<PointT>::Ptr cluster, std::vector<bool>& procPointIndexes, KdTree* tree, float distanceTol);
 

@@ -97,10 +97,8 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     // Time segmentation process
     auto startTime = std::chrono::steady_clock::now();
 	pcl::PointIndices::Ptr inliers (new pcl::PointIndices ());
-    std::vector<int> res;
 
-    res = RansacPlane(cloud,maxIterations,distanceThreshold);
-    inliers->indices = res;
+    inliers = RansacPlane(cloud,maxIterations,distanceThreshold);
     if (inliers->indices.size () == 0)
     {
         std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
@@ -224,11 +222,11 @@ std::vector<float> ProcessPointClouds<PointT>::crossProd(std::vector<float> cons
 }
 
 template<typename PointT>
-std::vector<int> ProcessPointClouds<PointT>::RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol){
+pcl::PointIndices::Ptr ProcessPointClouds<PointT>::RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol){
    
     srand(time(NULL));
-    pcl::PointIndices* bestSet(new pcl::PointIndices ());
-    pcl::PointIndices* tempSet(new pcl::PointIndices ());
+    pcl::PointIndices::Ptr inliersResult(new pcl::PointIndices ());
+    pcl::PointIndices::Ptr tempSet(new pcl::PointIndices ());
     // TODO: Fill in this function
     typename pcl::PointCloud<PointT>::Ptr samples(new pcl::PointCloud<PointT>);
 
@@ -240,7 +238,7 @@ std::vector<int> ProcessPointClouds<PointT>::RansacPlane(typename pcl::PointClou
     // For max iterations
     float distance = 0;
     for (int i=0; i<maxIterations; i++){
-    // Randomly sample subset and fit line
+    // Randomly sample subset and fit plane
         samples->points.push_back(cloud->points[rand()%cloudSize]);
         samples->points.push_back(cloud->points[rand()%cloudSize]);
         samples->points.push_back(cloud->points[rand()%cloudSize]);
@@ -255,28 +253,22 @@ std::vector<int> ProcessPointClouds<PointT>::RansacPlane(typename pcl::PointClou
         coefficients[2] = v3[2];
         coefficients[3] = -(v3[0]*samples->points[0].x + v3[1]*samples->points[0].y + v3[2]*samples->points[0].z);
         
-        //std::cout << "X: " << v3[0] << "\t Y: " << v3[1] << "\t Z: " << v3[2] << std::endl;
         // Measure distance between every point and fitted plane
         for(int j = 0; j<cloudSize; j++){
-            distance = abs(coefficients[0]*cloud->points[j].x + coefficients[1]*cloud->points[j].y + coefficients[2]*cloud->points[j].z + coefficients[3])/sqrt(pow(coefficients[0],2)+pow(coefficients[1],2) + pow(coefficients[2],2));
+            distance = abs(coefficients[0]*cloud->points[j].x + coefficients[1]*cloud->points[j].y +
+                           coefficients[2]*cloud->points[j].z + coefficients[3])/sqrt(pow(coefficients[0],2)+pow(coefficients[1],2) + pow(coefficients[2],2));
             if(distance <= distanceTol){
                 tempSet->indices.push_back(j);
             }
         }
-    // If distance is smaller than threshold count it as inlier
-        if(tempSet->indices.size()>bestSet->indices.size()){
-            bestSet->indices = tempSet->indices;
+        if(tempSet->indices.size()>inliersResult->indices.size()){
+            inliersResult->indices = tempSet->indices;
         }
         tempSet->indices.clear();
-        samples->clear();
+        samples->points.clear();
 
     }
     // Return indicies of inliers from fitted line with most inliers
-    std::vector<int> inliersResult(bestSet->indices.begin(),bestSet->indices.end());
-    //std::cout << "Inliers Dim : " << inliersResult.size() << std::endl;
-    
-    delete bestSet;
-    delete tempSet;
     
     return inliersResult;
 }
