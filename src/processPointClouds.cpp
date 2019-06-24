@@ -46,8 +46,8 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(ty
     std::vector<int> indexes;
 
     pcl::CropBox<PointT> carRoof(true);
-    carRoof.setMin(Eigen::Vector4f(-1.5, -1.7, -1, 1));
-    carRoof.setMax(Eigen::Vector4f(2.6, 1.7, -0.4, 1));
+    carRoof.setMin(Eigen::Vector4f(-1.5, -1.4, -1, 1));
+    carRoof.setMax(Eigen::Vector4f(2.6, 1.4, -0.4, 1));
     carRoof.setInputCloud(cloudRegion);
     carRoof.filter(indexes);
 
@@ -312,6 +312,8 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::c
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " << clusters.size() << " clusters" << std::endl;
+
+    delete tree;
 
     return clusters;
 
