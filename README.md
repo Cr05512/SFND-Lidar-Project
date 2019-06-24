@@ -6,6 +6,8 @@ I decided to create an own repository because in a first place it was made priva
 
 In order to compile it Eigen3 and pcl libraries are required.
 
+<img src="media/LidarProjectFinal.gif" width="700" height="400" />
+
 Commands for compiling:
 
 rm -r build/  
